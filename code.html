@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Emisiones de CO₂: Un Reto Global</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- Plotly.js para gráficos -->
+    <script src="https://cdn.plot.ly/plotly-2.29.1.min.js"></script>
+
+    <!-- D3.js para cargar CSV y GeoJSON -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Leaflet CSS y JS para el mapa -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        /* Reset y estilos base */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f0f4f8;
+            color: #2c3e50;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto 60px auto;
+            padding: 0 20px;
+        }
+
+        h1, h2 {
+            color: #1a3e59;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        h1 {
+            font-size: 2.6rem;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            border-bottom: 3px solid #3a7ca5;
+            padding-bottom: 8px;
+            margin-top: 40px;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #34495e;
+        }
+
+        select#country-select {
+            width: 100%;
+            max-width: 420px;
+            height: 140px;
+            padding: 8px 10px;
+            font-size: 1rem;
+            border-radius: 6px;
+            border: 1.8px solid #a3b9cc;
+            background-color: #ffffff;
+            box-shadow: 0 2px 6px rgba(50, 50, 93, 0.1);
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+        }
+
+            select#country-select:hover,
+            select#country-select:focus {
+                border-color: #2a7edb;
+                outline: none;
+                box-shadow: 0 0 8px rgba(42, 126, 219, 0.5);
+            }
+
+            select#country-select option:hover {
+                background-color: #dbe9ff;
+            }
+
+        .slider-container {
+            max-width: 420px;
+            margin: 40px auto 60px auto;
+            text-align: center;
+        }
+
+        #year-slider {
+            width: 100%;
+            max-width: 420px;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 6px;
+            background: #cbd7e3;
+            outline: none;
+            transition: background 0.3s ease;
+            cursor: pointer;
+        }
+
+            #year-slider:hover {
+                background: #a0bcd9;
+            }
+
+            #year-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 24px;
+                height: 24px;
+                background: #2a7edb;
+                cursor: pointer;
+                border-radius: 50%;
+                border: none;
+                box-shadow: 0 0 8px rgba(42, 126, 219, 0.8);
+                transition: background 0.3s ease;
+                margin-top: -8px;
+            }
+
+            #year-slider::-moz-range-thumb {
+                width: 24px;
+                height: 24px;
+                background: #2a7edb;
+                cursor: pointer;
+                border-radius: 50%;
+                border: none;
+                box-shadow: 0 0 8px rgba(42, 126, 219, 0.8);
+                transition: background 0.3s ease;
+            }
+
+        #year-label {
+            font-weight: 700;
+            margin-left: 15px;
+            font-size: 1.1rem;
+            color: #34495e;
+            user-select: none;
+        }
+
+        .chart-container {
+            background: #ffffff;
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+            transition: box-shadow 0.3s ease;
+        }
+
+            .chart-container:hover {
+                box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+            }
+
+        #line-chart, #bar-chart, #country-projection-chart {
+            width: 100%;
+            height: 450px;
+        }
+
+        #map {
+            height: 520px;
+            border-radius: 12px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            transition: box-shadow 0.3s ease;
+        }
+
+            #map:hover {
+                box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+            }
+
+        #country-info {
+            background: #ffffff;
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            max-width: 850px;
+            margin: 0 auto 40px auto;
+            font-size: 1.1rem;
+            color: #2c3e50;
+            display: none;
+            user-select: text;
+        }
+
+            #country-info h3 {
+                margin-top: 0;
+                color: #1a3e59;
+                font-size: 1.8rem;
+                margin-bottom: 15px;
+            }
+
+            #country-info img {
+                width: 90px;
+                border-radius: 8px;
+                margin-bottom: 18px;
+                display: block;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            }
+
+            #country-info p {
+                margin: 8px 0;
+            }
+
+        .info-section {
+            max-width: 850px;
+            margin: 0 auto 60px auto;
+            color: #34495e;
+            font-size: 1rem;
+            line-height: 1.7;
+        }
+
+            .info-section p {
+                max-width: 700px;
+                margin-bottom: 16px;
+            }
+
+            .info-section h2 {
+                margin-top: 60px;
+                margin-bottom: 18px;
+            }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #line-chart, #bar-chart, #country-projection-chart, #map {
+                height: 350px;
+            }
+
+            select#country-select {
+                height: 120px;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <article>
+
+            <!-- Introducción -->
+            <section id="intro" class="info-section">
+                <h1>Emisiones de Dióxido de Carbono (CO₂): Un Reto Global</h1>
+                <p>El dióxido de carbono (CO₂) es uno de los principales gases de efecto invernadero, responsable de gran parte del calentamiento global que enfrenta el planeta. Las actividades humanas, especialmente la quema de combustibles fósiles, han incrementado sus niveles en la atmósfera, causando impactos significativos en el clima, ecosistemas y sociedades.</p>
+                <p>Este artículo explora la evolución, distribución y proyección de las emisiones de CO₂ a nivel mundial, con énfasis en los principales países emisores y sus tendencias en las últimas dos décadas.</p>
+            </section>
+
+            <!-- Fuentes de Emisiones -->
+            <section id="fuentes" class="info-section">
+                <h2>Principales Fuentes de Emisiones</h2>
+                <p>Las emisiones de CO₂ provienen de distintas fuentes, siendo las más relevantes la combustión de carbón, petróleo y gas natural. Cada país presenta un perfil específico según su matriz energética, su nivel de desarrollo y actividades económicas predominantes.</p>
+                <p>A continuación se presentan gráficas y análisis comparativos que permiten entender mejor estas diferencias y sus implicaciones.</p>
+            </section>
+
+            <!-- Gráfica comparativa -->
+            <section class="chart-container">
+                <h2>Comparación de Emisiones Totales de CO₂</h2>
+                <div id="bar-chart"></div>
+            </section>
+
+            <!-- Selector de año -->
+            <section class="slider-container">
+                <h2>Selecciona un Año para la Comparación</h2>
+                <input type="range" id="year-slider" min="2000" max="2020" value="2020" step="1" />
+                <span id="year-label">2020</span>
+            </section>
+
+            <!-- Impacto global y evolución -->
+            <section id="impacto" class="info-section">
+                <h2>Impacto Global y Evolución de las Emisiones</h2>
+                <p>Las emisiones de CO₂ no sólo varían en cantidad absoluta, sino también en la tasa de crecimiento o disminución a lo largo del tiempo. A través de la siguiente gráfica se puede observar la evolución histórica de las emisiones de varios países seleccionados.</p>
+            </section>
+
+            <!-- Selector países y gráfica evolución -->
+            <section class="controls">
+                <label for="country-select">Selecciona uno o más países para analizar:</label>
+                <select id="country-select" multiple></select>
+            </section>
+
+            <section class="chart-container">
+                <h2>Evolución de las Emisiones de CO₂</h2>
+                <div id="line-chart"></div>
+            </section>
+
+            <!-- Mapa y proyecciones -->
+            <section id="mapa" class="info-section">
+                <h2>Mapa Interactivo y Proyección de Emisiones</h2>
+                <p>Explore el mapa para obtener información detallada sobre las emisiones de CO₂ por país, así como proyecciones basadas en tendencias recientes.</p>
+            </section>
+
+            <div id="map"></div>
+
+            <div id="country-info"></div>
+
+            <section class="chart-container">
+                <h2>Proyección de Emisiones de CO₂</h2>
+                <div id="country-projection-chart"></div>
+            </section>
+
+            <!-- Soluciones -->
+            <section id="soluciones" class="info-section">
+                <h2>Soluciones y Perspectivas para Reducir Emisiones</h2>
+                <p>Frente al desafío global de las emisiones de CO₂, diferentes países y organizaciones han implementado estrategias como la transición a energías renovables, la mejora en eficiencia energética y acuerdos internacionales para limitar el calentamiento global.</p>
+                <p>La participación individual también es clave, promoviendo estilos de vida sostenibles y demandando políticas ambientales responsables.</p>
+            </section>
+
+            <!-- Conclusión -->
+            <section id="conclusion" class="info-section">
+                <h2>Conclusión</h2>
+                <p>Las emisiones de dióxido de carbono representan un reto multidimensional que requiere acción conjunta a nivel global, nacional y local. Comprender su evolución y distribución es fundamental para diseñar soluciones efectivas y construir un futuro más sostenible.</p>
+            </section>
+
+            <!-- Referencias -->
+            <section id="referencias" class="info-section">
+                <h2>Referencias</h2>
+                <ul>
+                    <li><a href="https://ourworldindata.org/co2-and-other-greenhouse-gas-emissions" target="_blank" rel="noopener noreferrer">Our World in Data - Emisiones de CO₂</a></li>
+                    <li><a href="https://www.ipcc.ch/" target="_blank" rel="noopener noreferrer">IPCC - Reportes Científicos</a></li>
+                </ul>
+            </section>
+
+        </article>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
